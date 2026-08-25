@@ -6,7 +6,7 @@
 
 Понимает репозиторий. Находит главное. Показывает доказательства.
 
-[![CI](https://github.com/your-org/repo-guardian-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/repo-guardian-ai/actions)
+[![CI](https://github.com/HeyDander/multi-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/HeyDander/multi-skill/actions)
 [![Python](https://img.shields.io/badge/python-3.10%2B-3776AB.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-111827.svg)](LICENSE)
 
@@ -40,8 +40,8 @@ Repo Guardian превращает AI coding agent в системного senio
 ## За минуту
 
 ```bash
-git clone https://github.com/your-org/repo-guardian-ai
-cd repo-guardian-ai
+git clone https://github.com/HeyDander/multi-skill.git
+cd multi-skill
 
 python3 -m venv .venv
 . .venv/bin/activate
@@ -207,4 +207,3 @@ python3 -m compileall -q src
 ## License
 
 MIT — [LICENSE](LICENSE).
-
