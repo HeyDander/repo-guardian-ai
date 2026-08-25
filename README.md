@@ -6,7 +6,7 @@
 
 Evidence-first аудит репозитория для Claude Code и совместимых AI coding agents.
 
-[![CI](https://github.com/HeyDander/multi-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/HeyDander/multi-skill/actions)
+[![CI](https://github.com/HeyDander/repo-guardian-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/HeyDander/repo-guardian-ai/actions)
 [![Python](https://img.shields.io/badge/python-3.10%2B-3776AB.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-111827.svg)](LICENSE)
 
@@ -53,8 +53,8 @@ Repo Guardian не пытается выдать сотни «critical vulnerabi
 
 ## Установка
 
-    git clone https://github.com/HeyDander/multi-skill.git
-    cd multi-skill
+    git clone https://github.com/HeyDander/repo-guardian-ai.git
+    cd repo-guardian-ai
 
     python3 -m venv .venv
     . .venv/bin/activate
