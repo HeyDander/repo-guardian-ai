@@ -22,7 +22,7 @@ def security(repo: Repository) -> list[Finding]:
         if any(part in {"tests", "fixtures"} for part in path.relative_to(repo.root).parts): continue
         if path.name in {".env.example", "README.md"}: continue
         for number, line in enumerate(repo.read(path).splitlines(), 1):
-            if secret.search(line) and not re.search(r"(?i)(example|dummy|changeme|test)", line):
+            if secret.search(line) and not re.search(r"(?i)(example|dummy|changeme|test|your[_-]?|placeholder|replace[_-]?me)", line):
                 findings.append(_finding("RG-SEC-001", Severity.HIGH, "Security", "Возможный секрет в исходниках", [f"{path.relative_to(repo.root)}:{number}", "[redacted: matching assignment]"], "Секрет может попасть в историю Git или логи.", "Проверьте значение и вынесите его в secret store/переменную окружения; не показывайте значение в отчёте.", "Удалить секрет из истории только отдельным подтверждённым процессом.", Confidence.MEDIUM))
             if dangerous.search(line):
                 findings.append(_finding("RG-SEC-002", Severity.MEDIUM, "Security", "Динамическое выполнение команды/кода", [f"{path.relative_to(repo.root)}:{number}", "[redacted: command expression]"], "Непроверенный ввод может привести к выполнению кода или команд.", "Проследить источник аргумента и заменить на безопасный API с allow-list.", "Добавить валидацию и тест на вредоносный ввод.", Confidence.MEDIUM))

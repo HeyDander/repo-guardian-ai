@@ -30,6 +30,11 @@ class RepoGuardianTests(unittest.TestCase):
         self.assertNotIn("not-a-real-token-12345", " ".join(finding.evidence))
         self.assertEqual(finding.confidence.value, "MEDIUM")
 
+    def test_security_ignores_documented_secret_placeholders(self):
+        root = self.make_repo({"config.py": "WIFI_PASSWORD = 'YOUR_PASSWORD'\nAPI_TOKEN = 'PLACEHOLDER_TOKEN'\n"})
+        result = audit(root, "security")
+        self.assertEqual(result.findings, [])
+
     def test_no_test_fixture_is_reported(self):
         result = audit(self.make_repo({"pyproject.toml": "[project]\nname='x'\n", "app.py": "print('x')\n"}), "tests")
         self.assertEqual(result.findings[0].id, "RG-TST-001")
