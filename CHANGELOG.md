@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2 - 2026-08-25
+
+- Kept empty-diff review notices in explicit `review` mode instead of full health reports.
+
 ## 0.3.1 - 2026-08-25
 
 - Reduced false positives by excluding test/fixture code from production stack, architecture and performance signals.

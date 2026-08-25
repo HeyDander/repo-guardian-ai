@@ -44,6 +44,10 @@ class RepoGuardianTests(unittest.TestCase):
         result = audit(root, "docs")
         self.assertEqual(result.stacks, [])
 
+    def test_full_audit_does_not_report_empty_review_as_a_finding(self):
+        result = audit(self.make_repo({"README.md": "# project\n"}), "full")
+        self.assertFalse(any(f.id == "RG-REV-002" for f in result.findings))
+
     def test_safe_runner_blocks_destructive_tokens(self):
         result = Repository(self.make_repo({})).safe_command(["git", "reset", "--hard"])
         self.assertTrue(result.skipped)

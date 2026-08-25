@@ -127,10 +127,11 @@ def review(repo: Repository) -> list[Finding]:
 
 
 ANALYZERS: dict[str, Analyzer] = {"security": security, "tests": testing, "quality": quality, "docs": docs, "dependencies": dependencies, "performance": performance, "architecture": architecture, "release": release, "review": review}
+FULL_ANALYZERS = tuple(name for name in ANALYZERS if name != "review")
 
 
 def run(repo: Repository, mode: str = "full") -> list[Finding]:
-    selected = list(ANALYZERS) if mode in {"full", "doctor", "bugs"} else [mode] if mode in ANALYZERS else list(ANALYZERS)
+    selected = list(FULL_ANALYZERS) if mode in {"full", "doctor", "bugs"} else [mode] if mode in ANALYZERS else list(FULL_ANALYZERS)
     findings: list[Finding] = []
     for name in selected: findings.extend(ANALYZERS[name](repo))
     severity_rank = {Severity.CRITICAL: 0, Severity.HIGH: 1, Severity.MEDIUM: 2, Severity.LOW: 3, Severity.INFO: 4}
