@@ -1,0 +1,67 @@
+from __future__ import annotations
+
+import re
+from collections.abc import Callable
+from .models import Confidence, Finding, Severity, Score
+from .repository import Repository
+
+Analyzer = Callable[[Repository], list[Finding]]
+
+
+def _finding(code: str, severity: Severity, category: str, title: str, evidence: list[str], impact: str, recommendation: str, fix: str | None = None, confidence: Confidence = Confidence.HIGH) -> Finding:
+    return Finding(code, severity, category, title, evidence, impact, confidence, recommendation, fix, verified=confidence == Confidence.HIGH)
+
+
+def security(repo: Repository) -> list[Finding]:
+    findings = []
+    secret = re.compile(r"(?i)(api[_-]?key|secret|password|token)\s*[:=]\s*['\"][^'\"]{8,}['\"]")
+    dangerous = re.compile(r"(?i)(eval\s*\(|exec\s*\(|child_process\.exec\s*\(|os\.system\s*\()")
+    for path in repo.files():
+        if path.name in {".env.example", "README.md"}: continue
+        for number, line in enumerate(repo.read(path).splitlines(), 1):
+            if secret.search(line) and not re.search(r"(?i)(example|dummy|changeme|test)", line):
+                findings.append(_finding("RG-SEC-001", Severity.HIGH, "Security", "Возможный секрет в исходниках", [f"{path.relative_to(repo.root)}:{number}", "[redacted: matching assignment]"], "Секрет может попасть в историю Git или логи.", "Проверьте значение и вынесите его в secret store/переменную окружения; не показывайте значение в отчёте.", "Удалить секрет из истории только отдельным подтверждённым процессом.", Confidence.MEDIUM))
+            if dangerous.search(line):
+                findings.append(_finding("RG-SEC-002", Severity.MEDIUM, "Security", "Динамическое выполнение команды/кода", [f"{path.relative_to(repo.root)}:{number}", "[redacted: command expression]"], "Непроверенный ввод может привести к выполнению кода или команд.", "Проследить источник аргумента и заменить на безопасный API с allow-list.", "Добавить валидацию и тест на вредоносный ввод.", Confidence.MEDIUM))
+    return findings
+
+
+def testing(repo: Repository) -> list[Finding]:
+    files = repo.files(); tests = [p for p in files if "test" in p.name.lower() or "spec" in p.name.lower()]
+    if files and not tests:
+        return [_finding("RG-TST-001", Severity.HIGH, "Testing", "Тестовые файлы не обнаружены", ["repository root"], "Регрессии в критическом коде не имеют автоматического барьера.", "Добавить тестовый runner и минимальные тесты для критических путей.", "Начать с smoke/integration теста главного entry point.", Confidence.HIGH)]
+    return []
+
+
+def quality(repo: Repository) -> list[Finding]:
+    findings = []
+    for path in repo.files():
+        if path.suffix not in {".py", ".js", ".ts", ".go", ".rs", ".java"}: continue
+        lines = repo.read(path).splitlines()
+        if len(lines) > 500:
+            findings.append(_finding("RG-QUA-001", Severity.MEDIUM, "Code Quality", "Крупный модуль требует проверки границ ответственности", [f"{path.relative_to(repo.root)}:1", f"{len(lines)} lines"], "Большие модули повышают стоимость изменений и риск побочных эффектов.", "Разделять только после понимания public API и зависимостей.", "Сначала добавить characterization tests; затем выделить одну ответственность.", Confidence.MEDIUM))
+    return findings
+
+
+def docs(repo: Repository) -> list[Finding]:
+    if not repo.exists("README.md"):
+        return [_finding("RG-DOC-001", Severity.MEDIUM, "Documentation", "README отсутствует", ["README.md (missing)"], "Новому разработчику трудно запустить проект и понять его границы.", "Добавить краткий setup, команды проверки и описание архитектуры.", "Создать README без раскрытия секретов.", Confidence.HIGH)]
+    return []
+
+
+ANALYZERS: dict[str, Analyzer] = {"security": security, "tests": testing, "quality": quality, "docs": docs}
+
+
+def run(repo: Repository, mode: str = "full") -> list[Finding]:
+    selected = list(ANALYZERS) if mode in {"full", "doctor", "bugs", "review"} else [mode] if mode in ANALYZERS else list(ANALYZERS)
+    findings: list[Finding] = []
+    for name in selected: findings.extend(ANALYZERS[name](repo))
+    return findings
+
+
+def score(category: str, findings: list[Finding]) -> Score:
+    relevant = [f for f in findings if f.category.lower() == category.lower()]
+    penalties = sum({Severity.CRITICAL: 30, Severity.HIGH: 20, Severity.MEDIUM: 10, Severity.LOW: 3, Severity.INFO: 0}[f.severity] for f in relevant if f.confidence != Confidence.LOW)
+    value = max(0, min(100, 100 - penalties))
+    reasons = [f.title for f in relevant[:3]] or ["Подтверждённых проблем этого типа не найдено"]
+    return Score(category, value, reasons)
