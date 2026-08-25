@@ -35,6 +35,22 @@ Evidence может быть:
 
 Repo Guardian не пытается выдать сотни «critical vulnerabilities». Он показывает короткий приоритетный список, объясняет confidence и отделяет доказанные проблемы от гипотез.
 
+## Strict Engineer Mode
+
+В Skill есть строгий контракт для AI-агента, который уменьшает выдуманные факты и лишние изменения.
+
+Агент обязан:
+
+- сначала определить задачу, scope и acceptance criteria;
+- изучить существующий код, инструкции, tests и Git state;
+- писать минимальный рабочий patch без самовольного refactor;
+- не придумывать файлы, строки, API, команды и результаты;
+- помечать незапущенные проверки как `NOT RUN`;
+- после изменения проверить diff, syntax, tests и доступные quality checks;
+- не говорить «готово», пока не пройден verification gate.
+
+Полный контракт: [docs/agent-contract.md](docs/agent-contract.md).
+
 ## Установка
 
     git clone https://github.com/HeyDander/multi-skill.git

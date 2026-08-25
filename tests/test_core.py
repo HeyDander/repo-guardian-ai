@@ -88,5 +88,14 @@ class RepoGuardianTests(unittest.TestCase):
         self.assertEqual(main(["performance", "--repo", str(root), "--fail-on", "high"]), 0)
         self.assertEqual(main(["performance", "--repo", str(root), "--fail-on", "medium"]), 1)
 
+    def test_strict_agent_contract_contains_truth_scope_and_verification_gates(self):
+        project_root = Path(__file__).parents[1]
+        contract = (project_root / "docs" / "agent-contract.md").read_text()
+        skill = (project_root / "SKILL.md").read_text()
+        for phrase in ("IN SCOPE", "OUT OF SCOPE", "NOT RUN", "Minimal patch rule", "Verification gate", "SCOPE CHECK"):
+            self.assertIn(phrase, contract)
+        self.assertIn("Strict Engineer Contract", skill)
+        self.assertIn("agent-contract.md", skill)
+
 
 if __name__ == "__main__": unittest.main()
