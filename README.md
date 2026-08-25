@@ -67,6 +67,48 @@ Repo Guardian не пытается выдать сотни «critical vulnerabi
 
 Для Claude Code подключите [SKILL.md](SKILL.md) как Skill. CLI и analyzers находятся в src/repo_guardian и не зависят от AI-провайдера.
 
+## Два способа работы
+
+### Интерактивный terminal dashboard
+
+Если работаешь в терминале сам, запусти полноценный интерфейс:
+
+    repo-guardian ui --repo /path/to/project
+
+В dashboard есть Overview, score bars, цветные severity, Top Findings и Codebase Map.
+
+    +-------------------------------------------------------------+
+    | REPO GUARDIAN  OVERVIEW                                     |
+    | /path/to/project  |  Stack: Python                         |
+    +-------------------------------------------------------------+
+    | Overall  94/100  [#######################.....]             |
+    | Security             100/100  ####################           |
+    | Testing               80/100  ################....           |
+    | Architecture          90/100  ##################..           |
+    |                                                             |
+    | TOP FINDINGS                                               |
+    | HIGH/HIGH RG-TST-001  Test files not found                 |
+    +-------------------------------------------------------------+
+    | [r] refresh  [f] findings  [m] map  [q] quit                |
+    +-------------------------------------------------------------+
+
+Клавиши:
+
+- `r` — обновить аудит;
+- `f` — открыть полный список findings;
+- `m` — открыть карту codebase;
+- `b` — вернуться на Overview;
+- `q` — выйти.
+
+### Командный режим
+
+Для CI, скриптов и AI-агентов остаются обычный вывод и JSON:
+
+    repo-guardian full --repo .
+    repo-guardian full --repo . --json --fail-on high
+
+Интерактивный `ui` предназначен для человека в терминале и не используется в CI.
+
 ## Быстрый старт
 
 Проверить другой репозиторий:
