@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "repo-guardian-ai"
-version = "0.4.1"
+version = "0.4.2"
 description = "Evidence-based repository health audits for AI coding agents."
 readme = "README.md"
 requires-python = ">=3.10"

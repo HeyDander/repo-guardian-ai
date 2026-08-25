@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.2 - 2026-08-25
+
+- Added live Russian/English language toggle with the `l` key.
+- Translated dashboard labels, map screens and common finding explanations.
+
 ## 0.4.1 - 2026-08-25
 
 - Fixed terminal dashboard layout for narrow terminals.
