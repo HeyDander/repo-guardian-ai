@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -56,9 +58,38 @@ class Repository:
     def git_state(self) -> dict[str, str]:
         branch = self.git("branch", "--show-current")
         status = self.git("status", "--short")
-        return {"branch": branch.stdout or "(detached/unknown)", "status": status.stdout}
+        recent = self.git("log", "-1", "--oneline")
+        return {"branch": branch.stdout or "(detached/unknown)", "status": status.stdout, "last_commit": recent.stdout or "(none)"}
+
+    def project_commands(self) -> list[dict[str, str]]:
+        """Discover commands without executing them or interpreting shell input."""
+        commands: list[dict[str, str]] = []
+        package = self.root / "package.json"
+        if package.exists():
+            try:
+                scripts = json.loads(self.read(package)).get("scripts", {})
+                commands.extend({"name": f"npm:{name}", "command": f"npm run {name}", "source": "package.json"} for name in scripts)
+            except json.JSONDecodeError:
+                pass
+        pyproject = self.root / "pyproject.toml"
+        if pyproject.exists():
+            try:
+                data = tomllib.loads(self.read(pyproject))
+                for name in data.get("project", {}).get("scripts", {}):
+                    commands.append({"name": f"python:{name}", "command": name, "source": "pyproject.toml"})
+            except (tomllib.TOMLDecodeError, TypeError):
+                pass
+        makefile = self.root / "Makefile"
+        if makefile.exists():
+            for name in re.findall(r"^([A-Za-z0-9_.-]+):(?:\s|$)", self.read(makefile), re.MULTILINE):
+                if not name.startswith("."):
+                    commands.append({"name": f"make:{name}", "command": f"make {name}", "source": "Makefile"})
+        return commands
+
+    def key_files(self) -> list[str]:
+        names = {"README.md", "CONTRIBUTING.md", "Dockerfile", "pyproject.toml", "package.json", "go.mod", "Cargo.toml", "main.py", "app.py", "server.py", "index.ts", "index.js"}
+        return sorted(str(path.relative_to(self.root)) for path in self.files() if path.name in names and not any(part in {"tests", "fixtures"} for part in path.relative_to(self.root).parts))
 
 
 def json_dump(value: object) -> str:
     return json.dumps(value, indent=2, ensure_ascii=False)
-

@@ -12,6 +12,8 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--repo", default=".", help="путь к проверяемому репозиторию")
     p.add_argument("--json", action="store_true", help="машиночитаемый отчёт")
     p.add_argument("--all", action="store_true", help="показать все findings, а не только top 5")
+    p.add_argument("--fail-on", choices=["critical", "high", "medium", "low", "never"], default="high", help="код выхода для CI при findings этой серьёзности")
+    p.add_argument("--symptom", help="симптом для bug investigation; агент использует его как контекст")
     return p
 
 
@@ -33,13 +35,19 @@ def render_map(repo_root: str) -> str:
     files = repo.files()
     entrypoints = [p for p in files if p.name in {"main.py", "app.py", "server.py", "main.go", "index.js", "index.ts", "manage.py"} and not any(part in {"tests", "fixtures"} for part in p.relative_to(repo.root).parts)]
     configs = [p for p in files if p.name in {"pyproject.toml", "package.json", "Dockerfile", "docker-compose.yml", "go.mod", "Cargo.toml"}]
-    return "\n".join(["Repo Guardian: карта codebase", f"Файлов: {len(files)}", f"Entry points: {', '.join(str(p.relative_to(repo.root)) for p in entrypoints) or 'не найдены'}", f"Конфигурация: {', '.join(p.name for p in configs) or 'не найдена'}", "", "Critical flows требуют подтверждения по фактическим imports/calls; эта базовая карта не выдумывает связи."])
+    extensions: dict[str, int] = {}
+    for path in files: extensions[path.suffix or "[без расширения]"] = extensions.get(path.suffix or "[без расширения]", 0) + 1
+    tests = [p for p in files if "test" in p.name.lower() or "spec" in p.name.lower()]
+    commands = repo.project_commands()
+    return "\n".join(["Repo Guardian: карта codebase", f"Файлов: {len(files)}", f"Entry points: {', '.join(str(p.relative_to(repo.root)) for p in entrypoints) or 'не найдены'}", f"Тесты: {len(tests)} файлов", f"Конфигурация: {', '.join(p.name for p in configs) or 'не найдена'}", f"Команды (не запускались): {', '.join(c['command'] for c in commands) or 'не обнаружены'}", f"Типы файлов: {', '.join(f'{key}={value}' for key, value in sorted(extensions.items(), key=lambda item: -item[1])[:8])}", "", "Critical flows требуют подтверждения по фактическим imports/calls; эта базовая карта не выдумывает связи."])
 
 
 def render_context(repo_root: str) -> str:
     repo = Repository(repo_root)
     state = repo.git_state()
-    return "\n".join(["# Repo Guardian context", f"Root: {repo.root}", "", "## Стек", ", ".join(audit(repo_root, "docs").stacks) or "не определён", "", "## Git", f"Branch: {state['branch']}", "", "## Правило агента", "Сначала читай evidence и существующие инструкции; risky changes только после подтверждения."])
+    result = audit(repo_root, "docs")
+    commands = repo.project_commands()
+    return "\n".join(["# Repo Guardian context", f"Root: {repo.root}", "", "## Стек", ", ".join(result.stacks) or "не определён", "", "## Key files", *(f"- {path}" for path in repo.key_files()), "", "## Commands (not run)", *(f"- `{item['command']}` from {item['source']}" for item in commands), "", "## Git", f"Branch: {state['branch']}", f"Last commit: {state['last_commit']}", "", "## Правило агента", "Сначала читай evidence и существующие инструкции; risky changes только после подтверждения."])
 
 
 def render_fix(result) -> str:
@@ -53,14 +61,25 @@ def render_fix(result) -> str:
     return "\n".join(lines)
 
 
+def render_refactor() -> str:
+    return "\n".join(["Repo Guardian: безопасный refactor workflow", "", "1. UNDERSTAND  собрать map, imports, tests и Git scope", "2. PLAN        описать маленькие обратимые шаги", "3. CONFIRM     получить подтверждение на risky изменения", "4. IMPLEMENT   менять только согласованный scope", "5. TEST        запустить релевантные проверки", "6. REVIEW      повторить diff и health-check", "", "Ни один файл не изменён."])
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     if args.mode == "map":
         print(render_map(args.repo)); return 0
     if args.mode == "context":
         print(render_context(args.repo)); return 0
+    if args.mode == "refactor":
+        print(render_refactor()); return 0
     result = audit(args.repo, args.mode)
+    if args.symptom:
+        result.commands.append({"command": "bug symptom", "result": args.symptom})
     if args.mode == "fix":
         print(render_fix(result)); return 0
     print(json.dumps(result.to_dict(), ensure_ascii=False, indent=2) if args.json else render(result, args.all))
-    return 1 if any(f.severity.value in {"CRITICAL", "HIGH"} and f.confidence.value == "HIGH" for f in result.findings) else 0
+    if args.fail_on == "never": return 0
+    threshold = {"critical": 0, "high": 1, "medium": 2, "low": 3}[args.fail_on]
+    rank = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
+    return 1 if any(rank[f.severity.value] <= threshold and f.confidence.value != "LOW" for f in result.findings) else 0

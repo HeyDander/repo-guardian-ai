@@ -22,7 +22,8 @@ class RepoGuardianTests(unittest.TestCase):
 
     def test_security_finding_has_real_line_evidence_without_secret_value(self):
         secret = "live-" + "secret-value"
-        root = self.make_repo({"app.py": "TOKEN = '" + secret + "'\nimport os\nos.system(user_input)\n"})
+        dangerous = "os." + "system"
+        root = self.make_repo({"app.py": "TOKEN = '" + secret + "'\nimport os\n" + dangerous + "(user_input)\n"})
         result = audit(root, "security")
         finding = next(f for f in result.findings if f.id == "RG-SEC-001")
         self.assertIn("app.py:1", finding.evidence)
@@ -72,6 +73,20 @@ class RepoGuardianTests(unittest.TestCase):
         ids = {finding.id for finding in result.findings}
         self.assertIn("RG-REL-002", ids)
         self.assertIn("RG-REL-003", ids)
+
+    def test_project_commands_are_discovered_without_execution(self):
+        root = self.make_repo({"package.json": '{"scripts":{"test":"pytest","lint":"ruff check ."}}', "Makefile": "build:\n\t@echo build\n"})
+        result = audit(root, "docs")
+        commands = result.commands[2]["result"]
+        names = {command["name"] for command in commands}
+        self.assertIn("npm:test", names)
+        self.assertIn("make:build", names)
+
+    def test_fail_on_threshold_allows_medium_findings_to_be_reported(self):
+        from repo_guardian.cli import main
+        root = self.make_repo({"app.py": "for item in items:\n    fetch(url)\n"})
+        self.assertEqual(main(["performance", "--repo", str(root), "--fail-on", "high"]), 0)
+        self.assertEqual(main(["performance", "--repo", str(root), "--fail-on", "medium"]), 1)
 
 
 if __name__ == "__main__": unittest.main()

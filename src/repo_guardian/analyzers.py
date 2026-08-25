@@ -124,7 +124,12 @@ def run(repo: Repository, mode: str = "full") -> list[Finding]:
     selected = list(ANALYZERS) if mode in {"full", "doctor", "bugs"} else [mode] if mode in ANALYZERS else list(ANALYZERS)
     findings: list[Finding] = []
     for name in selected: findings.extend(ANALYZERS[name](repo))
-    return findings
+    severity_rank = {Severity.CRITICAL: 0, Severity.HIGH: 1, Severity.MEDIUM: 2, Severity.LOW: 3, Severity.INFO: 4}
+    confidence_rank = {Confidence.HIGH: 0, Confidence.MEDIUM: 1, Confidence.LOW: 2}
+    unique: dict[tuple[str, tuple[str, ...]], Finding] = {}
+    for finding in findings:
+        unique[(finding.id, tuple(finding.evidence))] = finding
+    return sorted(unique.values(), key=lambda item: (severity_rank[item.severity], confidence_rank[item.confidence], item.id, item.title))
 
 
 def score(category: str, findings: list[Finding]) -> Score:
