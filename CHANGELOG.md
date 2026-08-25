@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0 - 2026-08-25
+
+- Added dependency-free interactive terminal dashboard via `repo-guardian ui`.
+- Added Overview, Findings and Codebase Map screens with keyboard navigation.
+- Added score bars, severity colors, refresh and terminal-friendly layout.
+
 ## 0.3.3 - 2026-08-25
 
 - Reduced security false positives for documented configuration placeholders.

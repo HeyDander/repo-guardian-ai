@@ -58,6 +58,10 @@ class RepoGuardianTests(unittest.TestCase):
         missing = Path(tempfile.mkdtemp()) / "missing-project"
         self.assertEqual(main(["full", "--repo", str(missing)]), 2)
 
+    def test_cli_exposes_terminal_ui_mode(self):
+        from repo_guardian.cli import parser
+        self.assertEqual(parser().parse_args(["ui"]).mode, "ui")
+
     def test_safe_runner_blocks_destructive_tokens(self):
         result = Repository(self.make_repo({})).safe_command(["git", "reset", "--hard"])
         self.assertTrue(result.skipped)

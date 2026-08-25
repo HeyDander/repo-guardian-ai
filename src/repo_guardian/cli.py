@@ -5,11 +5,12 @@ import json
 from pathlib import Path
 from .audit import audit
 from .repository import Repository
+from .tui import run_ui
 
 
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="repo-guardian", description="Доказательный аудит репозитория")
-    p.add_argument("mode", nargs="?", default="full", choices=["doctor", "map", "bugs", "tests", "security", "dependencies", "performance", "architecture", "refactor", "review", "docs", "release", "context", "full", "fix"])
+    p.add_argument("mode", nargs="?", default="full", choices=["doctor", "map", "bugs", "tests", "security", "dependencies", "performance", "architecture", "refactor", "review", "docs", "release", "context", "full", "fix", "ui"])
     p.add_argument("--repo", default=".", help="путь к проверяемому репозиторию")
     p.add_argument("--json", action="store_true", help="машиночитаемый отчёт")
     p.add_argument("--all", action="store_true", help="показать все findings, а не только top 5")
@@ -70,6 +71,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     if args.mode == "map":
         print(render_map(args.repo)); return 0
+    if args.mode == "ui":
+        target = Path(args.repo).expanduser().resolve()
+        if not target.is_dir():
+            print(f"Ошибка: репозиторий не найден: {target}")
+            return 2
+        return run_ui(str(target))
     if args.mode == "context":
         print(render_context(args.repo)); return 0
     if args.mode == "refactor":

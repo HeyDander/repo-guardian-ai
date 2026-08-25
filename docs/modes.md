@@ -16,6 +16,7 @@
 | `release` | release readiness | test/build/lint/typecheck/config/git state |
 | `context` | AI context | commands, conventions, important files and hazards |
 | `full` | приоритизированный аудит | стек и git state до выбора проверок |
+| `ui` | terminal dashboard | интерактивный локальный просмотр score, findings и map |
 
 Режимы `dependencies`, `performance`, `architecture`, `release` и `review` теперь используют отдельные analyzers, а не fallback на общий health-check. Внешние vulnerability databases и runtime benchmarks не запускаются автоматически: для них нужен явно доступный инструмент и разрешение пользователя.
 

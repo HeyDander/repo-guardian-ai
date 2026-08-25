@@ -16,7 +16,9 @@ python3 -m repo_guardian full --repo .
 python3 -m repo_guardian doctor --repo . --json
 ```
 
-Для установленного пакета используется `repo-guardian full`. Режимы: `doctor`, `map`, `bugs`, `tests`, `security`, `dependencies`, `performance`, `architecture`, `refactor`, `review`, `docs`, `release`, `context`, `full`, `fix`.
+Для установленного пакета используется `repo-guardian full`. Режимы: `doctor`, `map`, `bugs`, `tests`, `security`, `dependencies`, `performance`, `architecture`, `refactor`, `review`, `docs`, `release`, `context`, `full`, `fix`, `ui`.
+
+Для человека есть интерактивный dashboard: `repo-guardian ui --repo /path/to/repo`. Не использовать `ui` в CI; для автоматизации использовать `--json`.
 
 ## Общий протокол
 

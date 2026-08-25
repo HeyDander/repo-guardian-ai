@@ -97,6 +97,12 @@ JSON для CI или другого агента:
 
     repo-guardian fix --repo .
 
+Открыть интерактивный terminal dashboard:
+
+    repo-guardian ui --repo /Users/daniel/CYBER
+
+В dashboard используются клавиши `r` для обновления, `f` для findings, `m` для codebase map, `b` для возврата и `q` для выхода.
+
 ## Все режимы
 
 | Режим | Что делает | Когда использовать |
@@ -116,6 +122,7 @@ JSON для CI или другого агента:
 | context | Создаёт компактный AI context | Для передачи проекта агенту |
 | full | Полный evidence-based audit и score | Для первого health-check |
 | fix | Разделяет safe fixes и risky changes | Перед внесением исправлений |
+| ui | Интерактивный terminal dashboard | Для ежедневной работы в терминале |
 
 ## Что реально анализируется
 
