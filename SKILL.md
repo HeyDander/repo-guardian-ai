@@ -12,8 +12,8 @@ Repo Guardian превращает агента в системного ауди
 Из корня проверяемого проекта:
 
 ```bash
-python -m repo_guardian full --repo .
-python -m repo_guardian doctor --repo . --json
+python3 -m repo_guardian full --repo .
+python3 -m repo_guardian doctor --repo . --json
 ```
 
 Для установленного пакета используется `repo-guardian full`. Режимы: `doctor`, `map`, `bugs`, `tests`, `security`, `dependencies`, `performance`, `architecture`, `refactor`, `review`, `docs`, `release`, `context`, `full`, `fix`.
@@ -32,3 +32,4 @@ python -m repo_guardian doctor --repo . --json
 
 Подробные правила режимов находятся в [docs/modes.md](docs/modes.md), схема отчёта в [docs/report-schema.md](docs/report-schema.md).
 
+Backend v0.2 реализует отдельные conservative analyzers для security, tests, docs, dependencies, performance, architecture, release и Git diff review. Отсутствие специализированного инструмента не заменяется выдуманным результатом: в таком случае агент объясняет ограничение и предлагает команду для подтверждения.

@@ -18,7 +18,7 @@ class RepoGuardianTests(unittest.TestCase):
         result = audit(self.make_repo({}), "full")
         self.assertEqual(result.stacks, [])
         self.assertTrue(any(f.id == "RG-DOC-001" for f in result.findings))
-        self.assertEqual(result.overall, 99)
+        self.assertEqual(result.overall, 98)
 
     def test_security_finding_has_real_line_evidence_without_secret_value(self):
         secret = "live-" + "secret-value"
@@ -47,6 +47,31 @@ class RepoGuardianTests(unittest.TestCase):
         result = audit(root, "docs")
         payload = json.loads(json.dumps(result.to_dict()))
         self.assertIn("findings", payload); self.assertEqual(payload["overall"], 100)
+
+    def test_dependency_mode_reports_missing_lockfile_and_wide_range(self):
+        root = self.make_repo({"package.json": '{"dependencies":{"demo":"*"}}'})
+        result = audit(root, "dependencies")
+        ids = {finding.id for finding in result.findings}
+        self.assertIn("RG-DEP-001", ids)
+        self.assertIn("RG-DEP-002", ids)
+
+    def test_performance_mode_reports_query_inside_loop_with_medium_confidence(self):
+        root = self.make_repo({"app.py": "for user in users:\n    rows = db.execute('SELECT * FROM users')\n"})
+        result = audit(root, "performance")
+        self.assertEqual(result.findings[0].id, "RG-PERF-001")
+        self.assertEqual(result.findings[0].confidence.value, "MEDIUM")
+
+    def test_architecture_mode_reports_oversized_module(self):
+        root = self.make_repo({"large.py": "\n".join(["value = 1"] * 301)})
+        result = audit(root, "architecture")
+        self.assertEqual(result.findings[0].id, "RG-ARC-001")
+
+    def test_release_mode_uses_git_state_and_ci_evidence(self):
+        root = self.make_repo({"app.py": "print('x')\n"})
+        result = audit(root, "release")
+        ids = {finding.id for finding in result.findings}
+        self.assertIn("RG-REL-002", ids)
+        self.assertIn("RG-REL-003", ids)
 
 
 if __name__ == "__main__": unittest.main()

@@ -31,7 +31,7 @@ def render(result, show_all: bool = False) -> str:
 def render_map(repo_root: str) -> str:
     repo = Repository(repo_root)
     files = repo.files()
-    entrypoints = [p for p in files if p.name in {"main.py", "app.py", "server.py", "main.go", "index.js", "index.ts", "manage.py"}]
+    entrypoints = [p for p in files if p.name in {"main.py", "app.py", "server.py", "main.go", "index.js", "index.ts", "manage.py"} and not any(part in {"tests", "fixtures"} for part in p.relative_to(repo.root).parts)]
     configs = [p for p in files if p.name in {"pyproject.toml", "package.json", "Dockerfile", "docker-compose.yml", "go.mod", "Cargo.toml"}]
     return "\n".join(["Repo Guardian: карта codebase", f"Файлов: {len(files)}", f"Entry points: {', '.join(str(p.relative_to(repo.root)) for p in entrypoints) or 'не найдены'}", f"Конфигурация: {', '.join(p.name for p in configs) or 'не найдена'}", "", "Critical flows требуют подтверждения по фактическим imports/calls; эта базовая карта не выдумывает связи."])
 

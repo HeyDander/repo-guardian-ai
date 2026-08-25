@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import json
 from collections.abc import Callable
 from .models import Confidence, Finding, Severity, Score
 from .repository import Repository
@@ -17,6 +18,7 @@ def security(repo: Repository) -> list[Finding]:
     secret = re.compile(r"(?i)(api[_-]?key|secret|password|token)\s*[:=]\s*['\"][^'\"]{8,}['\"]")
     dangerous = re.compile(r"(?i)(eval\s*\(|exec\s*\(|child_process\.exec\s*\(|os\.system\s*\()")
     for path in repo.files():
+        if any(part in {"tests", "fixtures"} for part in path.relative_to(repo.root).parts): continue
         if path.name in {".env.example", "README.md"}: continue
         for number, line in enumerate(repo.read(path).splitlines(), 1):
             if secret.search(line) and not re.search(r"(?i)(example|dummy|changeme|test)", line):
@@ -49,11 +51,77 @@ def docs(repo: Repository) -> list[Finding]:
     return []
 
 
-ANALYZERS: dict[str, Analyzer] = {"security": security, "tests": testing, "quality": quality, "docs": docs}
+def dependencies(repo: Repository) -> list[Finding]:
+    findings = []
+    manifests = [p for p in repo.files() if p.name in {"package.json", "pyproject.toml", "requirements.txt", "go.mod", "Cargo.toml", "pom.xml", "composer.json", "Gemfile"}]
+    lock_names = {"package-lock.json", "yarn.lock", "pnpm-lock.yaml", "poetry.lock", "Pipfile.lock", "go.sum", "Cargo.lock", "composer.lock", "Gemfile.lock"}
+    locks = [p for p in repo.files() if p.name in lock_names]
+    for manifest in manifests:
+        if manifest.parent == repo.root and not any(lock.parent == manifest.parent for lock in locks):
+            findings.append(_finding("RG-DEP-001", Severity.MEDIUM, "Dependencies", "Manifest не сопровождается lockfile", [f"{manifest.relative_to(repo.root)}:1", "lockfile (missing)"], "Разные окружения могут установить разные версии зависимостей.", "Добавить и проверять lockfile, если его поддерживает выбранная экосистема.", "Сгенерировать lockfile штатным менеджером после подтверждения.", Confidence.HIGH))
+    package = repo.root / "package.json"
+    if package.exists():
+        try:
+            data = json.loads(repo.read(package))
+            for section in ("dependencies", "devDependencies"):
+                for name, version in data.get(section, {}).items():
+                    if str(version).startswith(("*", "latest", ">", "^0", "~0")):
+                        findings.append(_finding("RG-DEP-002", Severity.LOW, "Dependencies", "Слишком широкий диапазон версии", [f"package.json:{section}.{name}", str(version)], "Обновление может неожиданно изменить поведение сборки.", "Зафиксировать совместимый диапазон после проверки lockfile и тестов.", "Не обновлять автоматически.", Confidence.MEDIUM))
+        except json.JSONDecodeError:
+            findings.append(_finding("RG-DEP-003", Severity.HIGH, "Dependencies", "package.json не является валидным JSON", ["package.json:1"], "Package manager и CI могут не установить проект.", "Исправить синтаксис и повторить install в изолированном окружении.", "Требует подтверждённого исправления файла.", Confidence.HIGH))
+    return findings
+
+
+def performance(repo: Repository) -> list[Finding]:
+    findings = []
+    loop = re.compile(r"(?i)\b(for|while)\b|\.forEach\s*\(")
+    expensive = re.compile(r"(?i)(SELECT\s+|requests?\.(get|post)|fetch\s*\(|axios\.|httpx\.|urllib\.)")
+    for path in repo.files():
+        if path.suffix not in {".py", ".js", ".ts", ".go", ".java", ".rs"}: continue
+        lines = repo.read(path).splitlines()
+        for number, line in enumerate(lines, 1):
+            if loop.search(line) and any(expensive.search(candidate) for candidate in lines[number:min(len(lines), number + 8)]):
+                findings.append(_finding("RG-PERF-001", Severity.MEDIUM, "Performance", "Потенциально дорогая операция внутри цикла", [f"{path.relative_to(repo.root)}:{number}", "loop + network/query call within next 8 lines"], "При росте входных данных время и нагрузка могут расти линейно или хуже.", "Проверить профилем/метрикой; рассмотреть batching, caching или prefetch только после измерения.", "Добавить benchmark или regression test до оптимизации.", Confidence.MEDIUM))
+    return findings
+
+
+def architecture(repo: Repository) -> list[Finding]:
+    findings = []
+    for path in repo.files():
+        if path.suffix not in {".py", ".js", ".ts", ".go", ".rs", ".java", ".cs"}: continue
+        lines = repo.read(path).splitlines()
+        if len(lines) > 300:
+            findings.append(_finding("RG-ARC-001", Severity.MEDIUM, "Architecture", "Крупный модуль требует проверки границ", [f"{path.relative_to(repo.root)}:1", f"{len(lines)} lines"], "Изменения в oversized module имеют повышенный blast radius.", "Проверить public API, imports и ответственность до рефакторинга.", "Сначала characterization tests, затем выделять одну ответственность.", Confidence.MEDIUM))
+    return findings
+
+
+def release(repo: Repository) -> list[Finding]:
+    findings = []
+    state = repo.git_state()
+    if state["status"]:
+        changed = state["status"].splitlines()[:10]
+        findings.append(_finding("RG-REL-001", Severity.MEDIUM, "Release Readiness", "В рабочем дереве есть незакоммиченные изменения", changed or ["git status --short"], "Release может не соответствовать проверенному commit.", "Зафиксировать или явно исключить изменения перед release.", "Не выполнять commit автоматически.", Confidence.HIGH))
+    if not repo.exists("CHANGELOG.md"):
+        findings.append(_finding("RG-REL-002", Severity.LOW, "Release Readiness", "CHANGELOG отсутствует", ["CHANGELOG.md (missing)"], "Пользователям сложнее понять изменения и breaking changes.", "Добавить release notes или changelog.", "Создать документацию без изменения runtime.", Confidence.HIGH))
+    if not any(p.as_posix().startswith(str(repo.root / ".github")) and p.name.endswith((".yml", ".yaml")) for p in repo.files()):
+        findings.append(_finding("RG-REL-003", Severity.LOW, "Release Readiness", "CI workflow не обнаружен", [".github/workflows (missing)"], "Проверки могут не запускаться на pull request.", "Добавить минимальный CI для тестов и сборки.", "Создать workflow после выбора поддерживаемого runtime.", Confidence.MEDIUM))
+    return findings
+
+
+def review(repo: Repository) -> list[Finding]:
+    result = repo.git("diff", "--stat")
+    if result.returncode != 0:
+        return [_finding("RG-REV-001", Severity.INFO, "Review", "Git diff недоступен", [result.stderr or "not a git repository"], "Невозможно подтвердить scope изменений.", "Запустить review внутри Git repository.", confidence=Confidence.LOW)]
+    if not result.stdout:
+        return [_finding("RG-REV-002", Severity.INFO, "Review", "Изменений для review не обнаружено", ["git diff --stat (empty)"], "Проверять нечего в текущем рабочем дереве.", "Передать branch diff или staged changes.", confidence=Confidence.HIGH)]
+    return [_finding("RG-REV-003", Severity.INFO, "Review", "Изменения требуют ручной проверки diff", [line.strip() for line in result.stdout.splitlines()[:5]], "Статический backend не заменяет анализ бизнес-корректности.", "Проверить correctness, security, compatibility и тесты изменённых файлов.", confidence=Confidence.HIGH)]
+
+
+ANALYZERS: dict[str, Analyzer] = {"security": security, "tests": testing, "quality": quality, "docs": docs, "dependencies": dependencies, "performance": performance, "architecture": architecture, "release": release, "review": review}
 
 
 def run(repo: Repository, mode: str = "full") -> list[Finding]:
-    selected = list(ANALYZERS) if mode in {"full", "doctor", "bugs", "review"} else [mode] if mode in ANALYZERS else list(ANALYZERS)
+    selected = list(ANALYZERS) if mode in {"full", "doctor", "bugs"} else [mode] if mode in ANALYZERS else list(ANALYZERS)
     findings: list[Finding] = []
     for name in selected: findings.extend(ANALYZERS[name](repo))
     return findings
