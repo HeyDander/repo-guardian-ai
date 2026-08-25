@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1 - 2026-08-25
+
+- Reduced false positives by excluding test/fixture code from production stack, architecture and performance signals.
+- Avoided lockfile warnings for Python projects without runtime dependencies.
+- Added regression coverage for fixture-only stack markers.
+
 ## 0.3.0 - 2026-08-25
 
 - Added Strict Engineer Contract for scope control, evidence and verification gates.

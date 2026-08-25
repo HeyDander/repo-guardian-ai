@@ -39,6 +39,11 @@ class RepoGuardianTests(unittest.TestCase):
         result = audit(root, "docs")
         self.assertIn("Node.js", result.stacks); self.assertIn("Go", result.stacks); self.assertIn("Docker", result.stacks)
 
+    def test_fixture_only_markers_do_not_change_detected_stack(self):
+        root = self.make_repo({"README.md": "# project\n", "tests/fixtures/package.json": "{}", "tests/fixtures/main.go": "package main\n"})
+        result = audit(root, "docs")
+        self.assertEqual(result.stacks, [])
+
     def test_safe_runner_blocks_destructive_tokens(self):
         result = Repository(self.make_repo({})).safe_command(["git", "reset", "--hard"])
         self.assertTrue(result.skipped)

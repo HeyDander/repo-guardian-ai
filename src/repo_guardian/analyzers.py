@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import json
+import tomllib
 from collections.abc import Callable
 from .models import Confidence, Finding, Severity, Score
 from .repository import Repository
@@ -57,6 +58,12 @@ def dependencies(repo: Repository) -> list[Finding]:
     lock_names = {"package-lock.json", "yarn.lock", "pnpm-lock.yaml", "poetry.lock", "Pipfile.lock", "go.sum", "Cargo.lock", "composer.lock", "Gemfile.lock"}
     locks = [p for p in repo.files() if p.name in lock_names]
     for manifest in manifests:
+        if manifest.parent != repo.root: continue
+        if manifest.name == "pyproject.toml":
+            try:
+                project = tomllib.loads(repo.read(manifest)).get("project", {})
+                if not project.get("dependencies") and not project.get("optional-dependencies"): continue
+            except tomllib.TOMLDecodeError: pass
         if manifest.parent == repo.root and not any(lock.parent == manifest.parent for lock in locks):
             findings.append(_finding("RG-DEP-001", Severity.MEDIUM, "Dependencies", "Manifest не сопровождается lockfile", [f"{manifest.relative_to(repo.root)}:1", "lockfile (missing)"], "Разные окружения могут установить разные версии зависимостей.", "Добавить и проверять lockfile, если его поддерживает выбранная экосистема.", "Сгенерировать lockfile штатным менеджером после подтверждения.", Confidence.HIGH))
     package = repo.root / "package.json"
@@ -77,6 +84,7 @@ def performance(repo: Repository) -> list[Finding]:
     loop = re.compile(r"(?i)\b(for|while)\b|\.forEach\s*\(")
     expensive = re.compile(r"(?i)(SELECT\s+|requests?\.(get|post)|fetch\s*\(|axios\.|httpx\.|urllib\.)")
     for path in repo.files():
+        if any(part in {"tests", "fixtures"} for part in path.relative_to(repo.root).parts): continue
         if path.suffix not in {".py", ".js", ".ts", ".go", ".java", ".rs"}: continue
         lines = repo.read(path).splitlines()
         for number, line in enumerate(lines, 1):
@@ -88,6 +96,7 @@ def performance(repo: Repository) -> list[Finding]:
 def architecture(repo: Repository) -> list[Finding]:
     findings = []
     for path in repo.files():
+        if any(part in {"tests", "fixtures"} for part in path.relative_to(repo.root).parts): continue
         if path.suffix not in {".py", ".js", ".ts", ".go", ".rs", ".java", ".cs"}: continue
         lines = repo.read(path).splitlines()
         if len(lines) > 300:
