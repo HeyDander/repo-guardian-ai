@@ -48,6 +48,11 @@ class RepoGuardianTests(unittest.TestCase):
         result = audit(self.make_repo({"README.md": "# project\n"}), "full")
         self.assertFalse(any(f.id == "RG-REV-002" for f in result.findings))
 
+    def test_missing_repository_returns_friendly_cli_error(self):
+        from repo_guardian.cli import main
+        missing = Path(tempfile.mkdtemp()) / "missing-project"
+        self.assertEqual(main(["full", "--repo", str(missing)]), 2)
+
     def test_safe_runner_blocks_destructive_tokens(self):
         result = Repository(self.make_repo({})).safe_command(["git", "reset", "--hard"])
         self.assertTrue(result.skipped)

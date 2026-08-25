@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 from .audit import audit
 from .repository import Repository
 
@@ -73,6 +74,10 @@ def main(argv: list[str] | None = None) -> int:
         print(render_context(args.repo)); return 0
     if args.mode == "refactor":
         print(render_refactor()); return 0
+    target = Path(args.repo).expanduser().resolve()
+    if not target.is_dir():
+        print(f"Ошибка: репозиторий не найден: {target}\nУкажите существующую папку, например: repo-guardian full --repo /path/to/project")
+        return 2
     result = audit(args.repo, args.mode)
     if args.symptom:
         result.commands.append({"command": "bug symptom", "result": args.symptom})
