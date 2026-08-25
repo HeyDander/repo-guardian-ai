@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1 - 2026-08-25
+
+- Fixed terminal dashboard layout for narrow terminals.
+- Prevented score bars, labels and findings from overlapping or truncating mid-value.
+- Added responsive single-column rendering below wide-terminal layout.
+
 ## 0.4.0 - 2026-08-25
 
 - Added dependency-free interactive terminal dashboard via `repo-guardian ui`.

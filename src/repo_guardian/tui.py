@@ -22,6 +22,12 @@ def _safe_add(window, y: int, x: int, value: str, attr: int = 0) -> None:
         pass
 
 
+def _short(value: str, width: int) -> str:
+    if width <= 3:
+        return value[:width]
+    return value if len(value) <= width else value[: width - 3] + "..."
+
+
 def _color(score: int) -> int:
     if score >= 80:
         return curses.color_pair(2)
@@ -32,9 +38,8 @@ def _color(score: int) -> int:
 
 def _header(window, title: str, repo: Repository, result) -> None:
     height, width = window.getmaxyx()
-    _safe_add(window, 0, 0, " REPO GUARDIAN ", curses.color_pair(1) | curses.A_BOLD)
-    _safe_add(window, 0, 17, f" {title} ", curses.A_BOLD)
-    _safe_add(window, 1, 2, f"{repo.root}  |  Stack: {', '.join(result.stacks) or 'unknown'}", curses.A_DIM)
+    _safe_add(window, 0, 0, f" REPO GUARDIAN  /  {title} ", curses.color_pair(1) | curses.A_BOLD)
+    _safe_add(window, 1, 2, _short(f"{repo.root}  |  Stack: {', '.join(result.stacks) or 'unknown'}", max(10, width - 4)), curses.A_DIM)
     _safe_add(window, 2, 0, "=" * max(1, width - 1), curses.color_pair(1))
 
 
@@ -43,25 +48,33 @@ def _dashboard(window, repo: Repository, result) -> None:
     _header(window, "OVERVIEW", repo, result)
     height, width = window.getmaxyx()
     _safe_add(window, 4, 2, "REPOSITORY HEALTH", curses.A_BOLD)
-    _safe_add(window, 5, 3, f"Overall  {result.overall:>3}/100  [{_bar(result.overall, 28)}]", _color(result.overall) | curses.A_BOLD)
+    health_width = min(48, max(36, width - 4))
+    overall_bar = min(24, max(10, health_width - 22))
+    _safe_add(window, 5, 3, f"Overall       {result.overall:>3}/100  [{_bar(result.overall, overall_bar)}]", _color(result.overall) | curses.A_BOLD)
     row = 7
+    score_end = row
     for score in result.scores:
-        if row >= height - 5:
+        if row >= height - 4:
             break
         _safe_add(window, row, 3, f"{score.category:<21} {score.value:>3}/100", _color(score.value))
-        _safe_add(window, row, 31, _bar(score.value, min(25, max(8, width - 57))), _color(score.value))
+        _safe_add(window, row, 35, _bar(score.value, min(20, max(6, health_width - 35))), _color(score.value))
         row += 1
-    panel_x = max(55, width // 2)
-    _safe_add(window, 4, panel_x, "TOP FINDINGS", curses.A_BOLD)
+        score_end = row
+    wide = width >= 105
+    panel_x = max(55, width // 2) if wide else 2
+    findings_row = 4 if wide else score_end + 1
+    _safe_add(window, findings_row, panel_x, f"TOP FINDINGS ({min(5, len(result.findings))})", curses.A_BOLD)
     findings = result.findings[:5]
     if not findings:
-        _safe_add(window, 6, panel_x, "[OK] No confirmed findings", curses.color_pair(2))
+        _safe_add(window, findings_row + 2, panel_x, "[OK] No confirmed findings", curses.color_pair(2))
     for index, finding in enumerate(findings):
-        if 6 + index * 2 >= height - 4:
+        item_row = findings_row + 2 + index * 2
+        if item_row >= height - 3:
             break
-        label = f"{finding.severity.value[:4]}/{finding.confidence.value[:4]} {finding.id}"
-        _safe_add(window, 6 + index * 2, panel_x, label, curses.color_pair(4 if finding.severity.value in {"HIGH", "CRITICAL"} else 3))
-        _safe_add(window, 7 + index * 2, panel_x + 2, finding.title)
+        label = f"{finding.severity.value}/{finding.confidence.value}  {finding.id}"
+        attr = curses.color_pair(4 if finding.severity.value in {"HIGH", "CRITICAL"} else 3)
+        _safe_add(window, item_row, panel_x, _short(label, max(10, width - panel_x - 2)), attr | curses.A_BOLD)
+        _safe_add(window, item_row + 1, panel_x + 2, _short(finding.title, max(10, width - panel_x - 4)))
     _safe_add(window, height - 2, 2, "[r] refresh   [f] findings   [m] map   [q] quit", curses.color_pair(1) | curses.A_BOLD)
     window.refresh()
 
@@ -147,4 +160,3 @@ def run_ui(root: str) -> int:
 
     curses.wrapper(app)
     return 0
-
