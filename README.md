@@ -67,6 +67,10 @@ Repo Guardian не пытается выдать сотни «critical vulnerabi
 
 Для Claude Code подключите [SKILL.md](SKILL.md) как Skill. CLI и analyzers находятся в src/repo_guardian и не зависят от AI-провайдера.
 
+## Demo
+
+![Repo Guardian Demo](assets/repo-guardian-demo.gif)
+
 ## Два способа работы
 
 ### Интерактивный terminal dashboard
