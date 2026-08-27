@@ -5,6 +5,7 @@ from pathlib import Path
 from repo_guardian.audit import audit
 from repo_guardian.cli import main, render
 from repo_guardian.repository import Repository
+from repo_guardian.installer import install_skill, InstallError
 
 
 class RepoGuardianTests(unittest.TestCase):
@@ -61,6 +62,18 @@ class RepoGuardianTests(unittest.TestCase):
     def test_cli_exposes_terminal_ui_mode(self):
         from repo_guardian.cli import parser
         self.assertEqual(parser().parse_args(["ui"]).mode, "ui")
+
+    def test_init_installs_skill_into_project(self):
+        root = self.make_repo({"README.md": "# project\n"})
+        destination = install_skill(root)
+        self.assertTrue(destination.is_file())
+        self.assertIn("name: repo-guardian", destination.read_text())
+
+    def test_init_does_not_overwrite_existing_skill_without_update(self):
+        root = self.make_repo({".claude/skills/repo-guardian/SKILL.md": "custom\n"})
+        with self.assertRaises(InstallError):
+            install_skill(root)
+        self.assertEqual((root / ".claude/skills/repo-guardian/SKILL.md").read_text(), "custom\n")
 
     def test_safe_runner_blocks_destructive_tokens(self):
         result = Repository(self.make_repo({})).safe_command(["git", "reset", "--hard"])

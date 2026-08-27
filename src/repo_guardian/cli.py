@@ -6,16 +6,19 @@ from pathlib import Path
 from .audit import audit
 from .repository import Repository
 from .tui import run_ui
+from .installer import InstallError, install_skill
 
 
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="repo-guardian", description="Доказательный аудит репозитория")
-    p.add_argument("mode", nargs="?", default="full", choices=["doctor", "map", "bugs", "tests", "security", "dependencies", "performance", "architecture", "refactor", "review", "docs", "release", "context", "full", "fix", "ui"])
+    p.add_argument("mode", nargs="?", default="full", choices=["doctor", "map", "bugs", "tests", "security", "dependencies", "performance", "architecture", "refactor", "review", "docs", "release", "context", "full", "fix", "ui", "init"])
     p.add_argument("--repo", default=".", help="путь к проверяемому репозиторию")
     p.add_argument("--json", action="store_true", help="машиночитаемый отчёт")
     p.add_argument("--all", action="store_true", help="показать все findings, а не только top 5")
     p.add_argument("--fail-on", choices=["critical", "high", "medium", "low", "never"], default="high", help="код выхода для CI при findings этой серьёзности")
     p.add_argument("--symptom", help="симптом для bug investigation; агент использует его как контекст")
+    p.add_argument("--scope", choices=["project", "user"], default="project", help="куда установить Skill в режиме init")
+    p.add_argument("--update", action="store_true", help="разрешить замену существующего Skill в режиме init")
     return p
 
 
@@ -77,6 +80,15 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Ошибка: репозиторий не найден: {target}")
             return 2
         return run_ui(str(target))
+    if args.mode == "init":
+        try:
+            destination = install_skill(args.repo, args.scope, args.update)
+        except InstallError as error:
+            print(f"Ошибка установки: {error}")
+            return 2
+        print(f"Skill установлен: {destination}")
+        print("В Claude Code используй /repo-guardian для запуска.")
+        return 0
     if args.mode == "context":
         print(render_context(args.repo)); return 0
     if args.mode == "refactor":

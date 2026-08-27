@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0 - 2026-08-27
+
+- Added `repo-guardian init` for safe Claude Code Skill installation.
+- Added project-local and user-level installation scopes.
+- Existing Claude Code Skills are protected from silent overwrites.
+
 ## 0.4.2 - 2026-08-25
 
 - Added live Russian/English language toggle with the `l` key.

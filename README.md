@@ -65,6 +65,16 @@ Repo Guardian не пытается выдать сотни «critical vulnerabi
     repo-guardian --help
     repo-guardian full --repo .
 
+Установка Skill в Claude Code:
+
+    repo-guardian init --repo .
+
+Команда создаёт `.claude/skills/repo-guardian/SKILL.md` в текущем проекте. После этого Claude Code сможет использовать `/repo-guardian`. Для установки Skill глобально для всех проектов:
+
+    repo-guardian init --scope user
+
+Существующий файл не перезаписывается автоматически. Для осознанного обновления установленного Skill используйте `--update`.
+
 Для Claude Code подключите [SKILL.md](SKILL.md) как Skill. CLI и analyzers находятся в src/repo_guardian и не зависят от AI-провайдера.
 
 ## Demo
@@ -175,6 +185,19 @@ JSON для CI или другого агента:
 | full | Полный evidence-based audit и score | Для первого health-check |
 | fix | Разделяет safe fixes и risky changes | Перед внесением исправлений |
 | ui | Интерактивный terminal dashboard | Для ежедневной работы в терминале |
+| init | Устанавливает Skill для Claude Code | Для быстрого подключения `/repo-guardian` |
+
+### Подключение к Claude Code одной командой
+
+Из корня проекта выполни:
+
+    repo-guardian init --repo .
+
+После этого Skill появится в `.claude/skills/repo-guardian/SKILL.md`, и Claude Code сможет использовать `/repo-guardian` в этом проекте. Для глобальной установки во все проекты:
+
+    repo-guardian init --scope user
+
+Команда безопасная: существующий Skill не заменяется автоматически. Если ты осознанно обновляешь его до версии из установленного Repo Guardian, добавь `--update`.
 
 ## Что реально анализируется
 
